@@ -28,7 +28,7 @@ def main():
         torch.cuda.set_device(local_rank)
         device = torch.device("cuda", local_rank)
     else:
-        local_rank = 0  # 对于单卡，使用rank 0
+        local_rank = 0
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     log_dir = os.path.join(args.experiment_dir, 'log')
@@ -41,7 +41,7 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
 
-    config_log_message = "\n--- Training Arguments ---"  # Start with a newline for separation
+    config_log_message = "\n--- Training Arguments ---"
     config_log_message += f"\n{pprint.pformat(vars(args), indent=2)}"
     config_log_message += "\n--- Model Parameters ---"
     config_log_message += f"\n{pprint.pformat(vars(model_args), indent=2)}"
@@ -54,7 +54,7 @@ def main():
     model_module_name = f'models.{args.model.lower()}'
     try:
         model_module = importlib.import_module(model_module_name)
-        model_class = getattr(model_module, args.model)  # Get class by name specified in config
+        model_class = getattr(model_module, args.model)
         logger.info(f"Successfully imported model '{args.model}' from '{model_module_name}'.")
     except ModuleNotFoundError:
         logger.error(f"Model module '{model_module_name}.py' not found.")
@@ -82,7 +82,7 @@ def main():
     model_init_params = vars(model_args)
     model = model_class(**model_init_params).to(device)
 
-    if is_distributed:  # 如果有多于一张 GPU
+    if is_distributed:
         model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
 
     logger.info("Train and evaluate process starts.")
