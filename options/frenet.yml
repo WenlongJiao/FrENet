@@ -1,0 +1,27 @@
+training_args:
+  model: FrENet
+  lr: 0.001
+  optimizer: adam
+  loss_function: freq
+  epoches: 1000
+  eta_min: 0.000001
+  batch_per_gpu: 8
+  train_dir: train_dataset
+  test_dir: test_dataset
+  val_dir: val_dataset
+  num_workers: 16
+  crop_size: [64, 64]
+  if_augmentation: true
+  seed: 42
+  scheduler_type: cosine
+  experiment_dir: experiment_frenet
+
+model_params:
+  in_channel: 4
+  width: 32
+  middle_blk_num: 8
+  enc_blk_nums: [2, 2, 4]
+  dec_blk_nums: [4, 2, 2]
+  train_size: 64
+  img_size: 64
+  grid_overlap_size: 16

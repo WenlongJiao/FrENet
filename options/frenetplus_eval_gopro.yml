@@ -1,0 +1,28 @@
+training_args:
+  model: FrENet
+  lr: 0.001
+  optimizer: adam
+  loss_function: freq
+  epoches: 1000
+  eta_min: 0.000001
+  batch_per_gpu: 4
+  num_workers: 16
+  crop_size: [256, 256]
+  if_augmentation: true
+  seed: 42
+  scheduler_type: cosine
+  experiment_dir: experiment_eval_hide
+  checkpoint_path: /data0/wubin/code/newmodel/checkpoints/FrENetPlus_GoPro.pth
+  train_dir: /data0/wubin/code/nafnet/datasets/GoPro/train/
+  test_dir: /data0/wubin/code/nafnet/datasets/GoPro/test/
+  val_dir: /data0/wubin/code/nafnet/datasets/GoPro/test/
+
+model_params:
+  in_channel: 3
+  width: 64
+  middle_blk_num: 4
+  enc_blk_nums: [2, 2, 4]
+  dec_blk_nums: [4, 2, 2]
+  train_size: 256
+  img_size: 256
+  grid_overlap_size: 128
