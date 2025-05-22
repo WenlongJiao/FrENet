@@ -292,6 +292,8 @@ class FrEBlock(nn.Module):
         x_fft = local_fea + global_fea
         x_fft_real, x_fft_imag = self.conv_fft3(x_fft).chunk(2, dim=1)
         x_fft = torch.complex(x_fft_real, x_fft_imag)
+        if is_encoder:
+            x_fft_skip = x_fft
         x_fft = torch.fft.ifftshift(x_fft, dim=(-2, -1))
         x_fft = torch.fft.ifft2(x_fft).real
 
