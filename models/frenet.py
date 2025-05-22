@@ -423,8 +423,6 @@ class AFPM(nn.Module):
         L = self.L
         K = self.K
 
-        self._captured_afpm_input = x.detach().cpu()
-
         unfolded_x = torch.nn.functional.unfold(x, K, stride=K) # [B, C*K*K, L]
         unfolded_x = unfolded_x.view(B, C, K * K, L) # [B, C, K*K, L]
         unfolded_x = unfolded_x.permute(0, 3, 1, 2).contiguous() # [B, L, C, K*K]
