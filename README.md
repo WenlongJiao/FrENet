@@ -11,7 +11,7 @@ Wenlong Jiao, Binglong Li, Wei Shang, Ping Wang, [Dongwei Ren](https://csdwren.g
 ***
 
 ## Network Architecture
-<img src="figs/frenet.jpg" alt="performance" style="zoom:7%;" />
+<img src="figs/frenet.jpg" alt="performance" style="zoom:5%;" />
 
 ## QuickRun
 
@@ -42,7 +42,7 @@ python eval_raw.py -config options/frenet.yml
 
 ## Results
 
-<img src="figs/performance.jpg" alt="performance" style="zoom:7%;" />
+<img src="figs/performance.jpg" alt="performance" style="zoom:5%;" />
 
 FreNet achieved state-of-the-art (SOTA) performance in RAW image deblurring.
 
