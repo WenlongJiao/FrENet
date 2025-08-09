@@ -69,9 +69,9 @@ def main():
     logger.info(f"Loading data.")
     args.crop_size = tuple(args.crop_size) if isinstance(args.crop_size, list) else args.crop_size
     train_loader, test_loader, val_loader = load_and_process_realblur_data(
-        train_list_paths='/data0/wubin/code/nafnet/datasets/RealBlur_R_train_list.txt',
-        val_list_paths= '/data0/wubin/code/nafnet/datasets/RealBlur_R_test_list.txt',
-        data_root='/data0/wubin/code/nafnet/datasets/',
+        train_list_paths='datasets/RealBlur_R_train_list.txt',
+        val_list_paths= 'datasets/RealBlur_R_test_list.txt',
+        data_root='datasets/',
         batch_size=args.batch_per_gpu,
         num_workers=args.num_workers,
         distributed=is_distributed,

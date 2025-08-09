@@ -69,9 +69,9 @@ def main():
     logger.info(f"Loading data.")
     args.crop_size = tuple(args.crop_size) if isinstance(args.crop_size, list) else args.crop_size
     train_loader, test_loader, val_loader = load_and_process_gopro_data(
-        train_dir='/data0/wubin/code/nafnet/datasets/GoPro/train/',
-        test_dir='/data0/wubin/code/nafnet/datasets/GoPro/test/',
-        val_dir='/data0/wubin/code/nafnet/datasets/GoPro/test/',
+        train_dir='datasets/GoPro/train/',
+        test_dir='datasets/GoPro/test/',
+        val_dir='datasets/GoPro/test/',
         batch_size=args.batch_per_gpu,
         num_workers=args.num_workers,
         crop_size=args.crop_size,
