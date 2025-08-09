@@ -144,9 +144,7 @@ class Trainer(TrainerBase):
         with torch.no_grad():
             for batch_idx, (blur_images, sharp_images) in enumerate(test_loader):
                 blur_images, sharp_images = blur_images.to(self.device), sharp_images.to(self.device)
-                blur_images = Packing(blur_images)
                 outputs = model(blur_images)
-                outputs = Unpacking(outputs)
                 for i in range(outputs.size(0)):
                     output_tensor = outputs[i]
                     sharp_gt_tensor = sharp_images[i]
@@ -238,9 +236,7 @@ class Trainer(TrainerBase):
                     continue
 
                 blur_images, sharp_images = blur_images.to(self.device), sharp_images.to(self.device)
-                blur_images = Packing(blur_images)
                 outputs = model(blur_images)
-                outputs = Unpacking(outputs)
                 sharp_images = sharp_images.to(outputs.device)
 
                 for i in range(outputs.size(0)):

@@ -6,6 +6,11 @@ import pprint
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 
+# 解决 SSL 证书问题
+import ssl
+import urllib.request
+ssl._create_default_https_context = ssl._create_unverified_context
+
 from utils.data_process import load_and_process_data
 from utils.train_and_evaluate import *
 from utils.option_util import load_config
@@ -28,9 +33,10 @@ def main():
         torch.cuda.set_device(local_rank)
         device = torch.device("cuda", local_rank)
     else:
-        local_rank = 0
+        local_rank = 0  # 对于单卡，使用rank 0
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    args.experiment_dir = os.path.join('experiments', args.experiment_dir)
     log_dir = os.path.join(args.experiment_dir, 'log')
     os.makedirs(log_dir, exist_ok=True)
     logger = setup_logger(log_dir)
@@ -41,7 +47,7 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
 
-    config_log_message = "\n--- Training Arguments ---"
+    config_log_message = "\n--- Training Arguments ---"  # Start with a newline for separation
     config_log_message += f"\n{pprint.pformat(vars(args), indent=2)}"
     config_log_message += "\n--- Model Parameters ---"
     config_log_message += f"\n{pprint.pformat(vars(model_args), indent=2)}"
@@ -54,7 +60,7 @@ def main():
     model_module_name = f'models.{args.model.lower()}'
     try:
         model_module = importlib.import_module(model_module_name)
-        model_class = getattr(model_module, args.model)
+        model_class = getattr(model_module, args.model)  # Get class by name specified in config
         logger.info(f"Successfully imported model '{args.model}' from '{model_module_name}'.")
     except ModuleNotFoundError:
         logger.error(f"Model module '{model_module_name}.py' not found.")
@@ -72,6 +78,7 @@ def main():
         train_dir=args.train_dir,
         test_dir=args.test_dir,
         val_dir=args.val_dir,
+        data_domain=args.data_domain,
         batch_size=args.batch_per_gpu,
         num_workers=args.num_workers,
         crop_size=args.crop_size,
@@ -81,6 +88,7 @@ def main():
 
     model_init_params = vars(model_args)
     model = model_class(**model_init_params).to(device)
+    logger.info(f"Model '{args.model}' initialized with parameters: {list(model_init_params.keys())}")
 
     if is_distributed:
         model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
