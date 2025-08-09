@@ -16,7 +16,6 @@ training_args:
   seed: 42
   scheduler_type: cosine
   experiment_dir: frenet
-  checkpoint_path: C:\Users\Wenlong\Documents\CODE\Python\NewModel\checkpoints\FrENet_Raw.pth
 
 model_params:
   in_channel: 4
