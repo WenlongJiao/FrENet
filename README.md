@@ -40,11 +40,20 @@ Please download the pre-trained deblurring model to the `checkpoints` folder and
 python eval_raw.py -config options/frenet.yml
 ```
 
+### Generating DNG with Original Metadata
+
+To ensure the deblurred RAW output can be correctly processed by standard RAW editors, it's crucial to embed the original camera's metadata into the final DNG file. We provide scripts to facilitate this process. The method involves first extracting metadata from the blurry RAW file and then injecting it into the deblurred output.
+
+This process requires ExifTool. Please install it first.
+
+Use `metadata.py` to extract the metadata from the original blurry RAW image. And then use `add_exif.py` to process the blurry RAW image through the model and inject the extracted metadata into the deblurred result.
+
 ## Results
 
 <img src="figs/performance.jpg" alt="performance" style="zoom:5%;" />
 
 FreNet achieved state-of-the-art (SOTA) performance in RAW image deblurring.
+
 
 ## Citation
 
@@ -66,4 +75,5 @@ If you have any question, please contact [wenlong@tju.edu.cn](wenlong@tju.edu.cn
 ## Acknowledgment
 
 Some codes are based on [NAFNet](https://github.com/megvii-research/NAFNet) and  [BasicSR](https://github.com/xinntao/BasicSR) toolbox. Thanks for their awesome works.
+
 
