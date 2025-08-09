@@ -46,7 +46,8 @@ To ensure the deblurred RAW output can be correctly processed by standard RAW ed
 
 This process requires ExifTool. Please install it first.
 
-Use `metadata.py` to extract the metadata from the original blurry RAW image. And then use `add_exif.py` to process the blurry RAW image through the model and inject the extracted metadata into the deblurred result.
+Use `metadata.py` to extract the metadata from the original blurry RAW image. After processing the blurry RAW image through the model, use `add_exif.py` to inject the extracted metadata into the deblurred result.
+Afterward, you can use `eval_rgb_from_raw.py` to test the model's performance in the RGB domain following this ISP pipeline.
 
 ## Results
 
@@ -75,5 +76,6 @@ If you have any question, please contact [wenlong@tju.edu.cn](wenlong@tju.edu.cn
 ## Acknowledgment
 
 Some codes are based on [NAFNet](https://github.com/megvii-research/NAFNet) and  [BasicSR](https://github.com/xinntao/BasicSR) toolbox. Thanks for their awesome works.
+
 
 
