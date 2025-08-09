@@ -8,7 +8,7 @@ training_args:
   batch_per_gpu: 8
   train_dir: train_dataset
   test_dir: test_dataset
-  val_dir: test_dataset
+  val_dir: val_dataset
   data_domain: raw
   num_workers: 16
   crop_size: [64, 64]
@@ -16,7 +16,7 @@ training_args:
   seed: 42
   scheduler_type: cosine
   experiment_dir: frenet
-  checkpoint_path: C:\Users\Wenlong\Documents\CODE\Python\NewModel\checkpoints\FrENet_Raw.pth
+  checkpoint_path: checkpoints\FrENet_Raw.pth
 
 model_params:
   in_channel: 4
