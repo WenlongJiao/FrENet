@@ -6,13 +6,7 @@ import imageio
 import numpy as np
 from tensorstore import float32
 
-from models.newmodel import *
-from models.frenet import *
-from models.newmodel3 import *
-from models.nafnet import NAFNet
-from models.loformer import LoFormer
-from models.rawnet import *
-from models.fftformer import *
+from models.frenet import FrENet
 from utils.model_util import *
 
 
@@ -93,40 +87,20 @@ def main():
 
     config = {
         'model': {
-            'name': 'LoFormer',
+            'name': 'FrENet',
             'params': {
-                'inp_channels': 4,
-                'out_channels': 4,
-                'dim': 48,  # 特征维度
-                'enc_blk_nums': [1, 2, 6],  # Encoder中每个阶段的块数
-                'middle_blk_num': 9,  # 中间部分的块数
-                'dec_blk_nums': [6, 2, 2],  # Decoder中每个阶段的块数
-                'heads_enc': [1, 2, 4],  # Encoder中每个阶段的头数
-                'heads_mid': 8,  # 中间部分的头数
-                'ffn_expansion_factor': 2.66,
-                'bias': True,
-                'LayerNorm_type': 'WithBias',  # LayerNorm类型, 'WithBias'是字符串
-                'dual_pixel_task': False,
+                'width': 32,
+                'middle_blk_num': 8,
+                'enc_blk_nums': [2, 2, 4],
+                'dec_blk_nums': [4, 2, 2],
                 'train_size': 64,
-                'window_size_enc': [8, 8, 8],  # Encoder窗口大小
-                'window_size_mid': 8,  # 中间部分窗口大小
-                'grid_size_enc': [8, 8, 8],
-                'grid_size_mid': 8,
-                'window_size_dct_enc': [0, 0, 0],
-                'window_size_dct_mid': 0,
-                'up_method': 'upshuffle',  # 上采样方法, 'upshuffle'是字符串
-                'cs_e': ['channel_mlp', 'channel_mlp'],
-                'cs_m': ['channel_mlp', 'channel_mlp'],
-                'cs_d': ['channel_mlp', 'channel_mlp'],
-                'norm_type_': [['LayerNorm', 'LayerNorm'], ['LayerNorm', 'LayerNorm']],
-                'qk_norm': [False, False],
-                'temp_adj': None,  # 空值用 None 表示
-                'ffn': 'ffn'  # ffn类型, 'ffn'是字符串
+                'img_size': 64,
+                'grid_overlap_size': 16,
             }
         },
         'processing': {
-            'checkpoint_path': 'checkpoints/LoFormer_checkpoint_seed42_epoch1000.pth',
-            'output_folder': 'loformer_raw',
+            'checkpoint_path': 'checkpoints/FrENet_Raw.pth',
+            'output_folder': 'frenet_raw',
         }
     }
     # ==============================================================================
@@ -136,7 +110,7 @@ def main():
     # 1. 使用 ** 操作符将字典中的参数解包并传入模型构造函数
     #    这要求 LoFormer 的 __init__ 方法能接受这些参数
     model_params = config['model']['params']
-    model = LoFormer(**model_params).to(device)
+    model = FrENet(**model_params).to(device)
 
     # 2. 从配置字典中获取处理参数
     checkpoint_path = config['processing']['checkpoint_path']
