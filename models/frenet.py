@@ -122,7 +122,7 @@ class FrENet(nn.Module):
         x = x[:, :, :HEIGHT, :WIDTH].contiguous() + inp
 
         return x
-
+    
     def grids(self, x):
         b, c, h, w = x.shape
         self.original_size = (b, c, h, w)
@@ -130,38 +130,32 @@ class FrENet(nn.Module):
         k1, k2 = self.grid_kernel_size
         k1 = min(h, k1)
         k2 = min(w, k2)
-        grid_overlap_size = self.grid_overlap_size  # (64, 64)
+        grid_overlap_size = self.grid_overlap_size 
 
         stride = (k1 - grid_overlap_size[0], k2 - grid_overlap_size[1])
         self.stride = stride
-        num_row = (h - grid_overlap_size[0] - 1) // stride[0] + 1
-        num_col = (w - grid_overlap_size[1] - 1) // stride[1] + 1
+        num_row = (h - grid_overlap_size[0] - 1) // stride[0] + 1 if stride[0] > 0 else 1
+        num_col = (w - grid_overlap_size[1] - 1) // stride[1] + 1 if stride[1] > 0 else 1
         self.nr = num_row
         self.nc = num_col
 
-        # import math
-        step_j = k2 if num_col == 1 else stride[1]  # math.ceil((w - stride[1]) / (num_col - 1) - 1e-8)
-        step_i = k1 if num_row == 1 else stride[0]  # math.ceil((h - stride[0]) / (num_row - 1) - 1e-8)
+        step_j = k2 if num_col == 1 else stride[1]
+        step_i = k1 if num_row == 1 else stride[0]
 
         parts = []
         idxes = []
-        i = 0  # 0~h-1
+        i = 0 
         last_i = False
-        self.ek1, self.ek2 = None, None
+
         while i < h and not last_i:
             j = 0
             if i + k1 >= h:
-                # if not self.ek1:
-                #     # print(step_i, i, k1, h)
-                #     self.ek1 = i + k1 - h # - self.grid_overlap_size[0]
                 i = h - k1
                 last_i = True
 
             last_j = False
             while j < w and not last_j:
                 if j + k2 >= w:
-                    # if not self.ek2:
-                    #     self.ek2 = j + k2 - w # + self.grid_overlap_size[1]
                     j = w - k2
                     last_j = True
                 parts.append(x[:, :, i:i + k1, j:j + k2])
@@ -173,70 +167,177 @@ class FrENet(nn.Module):
         self.idxes = idxes
         return parts
 
-    def get_overlap_matrix(self, h, w):
-        # if self.grid:
-        # if self.fuse_matrix_h1 is None:
+    def get_overlap_matrix(self, h, w, device, dtype):
         self.h = h
         self.w = w
-        self.ek1 = self.nr * self.stride[0] + self.grid_overlap_size[0] * 2 - h
-        self.ek2 = self.nc * self.stride[1] + self.grid_overlap_size[1] * 2 - w
-        # self.ek1, self.ek2 = 48, 224
-        # print(self.ek1, self.ek2, self.nr)
-        # print(self.grid_overlap_size)
-        # self.grid_overlap_size = [8, 8]
-        # self.grid_overlap_size = [self.grid_overlap_size[0] * 2, self.grid_overlap_size[1] * 2]
-        self.fuse_matrix_w1 = torch.linspace(1., 0., self.grid_overlap_size[1]).view(1, 1, self.grid_overlap_size[1])
-        self.fuse_matrix_w2 = torch.linspace(0., 1., self.grid_overlap_size[1]).view(1, 1, self.grid_overlap_size[1])
-        self.fuse_matrix_h1 = torch.linspace(1., 0., self.grid_overlap_size[0]).view(1, self.grid_overlap_size[0], 1)
-        self.fuse_matrix_h2 = torch.linspace(0., 1., self.grid_overlap_size[0]).view(1, self.grid_overlap_size[0], 1)
-        self.fuse_matrix_ew1 = torch.linspace(1., 0., self.ek2).view(1, 1, self.ek2)
-        self.fuse_matrix_ew2 = torch.linspace(0., 1., self.ek2).view(1, 1, self.ek2)
-        self.fuse_matrix_eh1 = torch.linspace(1., 0., self.ek1).view(1, self.ek1, 1)
-        self.fuse_matrix_eh2 = torch.linspace(0., 1., self.ek1).view(1, self.ek1, 1)
+        
+        k1, k2 = self.grid_kernel_size
+        k1, k2 = min(h, k1), min(w, k2)
+        grid_overlap_size = self.grid_overlap_size
+        stride = (k1 - grid_overlap_size[0], k2 - grid_overlap_size[1])
+        
+        num_row = (h - grid_overlap_size[0] - 1) // stride[0] + 1 if stride[0] > 0 else 1
+        num_col = (w - grid_overlap_size[1] - 1) // stride[1] + 1 if stride[1] > 0 else 1
+        self.nr, self.nc = num_row, num_col
+
+        self.ek1 = max(0, self.nr * stride[0] + grid_overlap_size[0] * 2 - h)
+        self.ek2 = max(0, self.nc * stride[1] + grid_overlap_size[1] * 2 - w)
+
+        self.fuse_matrix_w1 = torch.linspace(1., 0., self.grid_overlap_size[1], device=device, dtype=dtype).view(1, 1, 1, self.grid_overlap_size[1])
+        self.fuse_matrix_w2 = torch.linspace(0., 1., self.grid_overlap_size[1], device=device, dtype=dtype).view(1, 1, 1, self.grid_overlap_size[1])
+        self.fuse_matrix_h1 = torch.linspace(1., 0., self.grid_overlap_size[0], device=device, dtype=dtype).view(1, 1, self.grid_overlap_size[0], 1)
+        self.fuse_matrix_h2 = torch.linspace(0., 1., self.grid_overlap_size[0], device=device, dtype=dtype).view(1, 1, self.grid_overlap_size[0], 1)
+        
+        if self.ek2 > 0:
+            self.fuse_matrix_ew1 = torch.linspace(1., 0., self.ek2, device=device, dtype=dtype).view(1, 1, 1, self.ek2)
+            self.fuse_matrix_ew2 = torch.linspace(0., 1., self.ek2, device=device, dtype=dtype).view(1, 1, 1, self.ek2)
+        else: 
+            self.fuse_matrix_ew1 = torch.empty((1,1,1,0), device=device, dtype=dtype)
+            self.fuse_matrix_ew2 = torch.empty((1,1,1,0), device=device, dtype=dtype)
+        if self.ek1 > 0:
+            self.fuse_matrix_eh1 = torch.linspace(1., 0., self.ek1, device=device, dtype=dtype).view(1, 1, self.ek1, 1)
+            self.fuse_matrix_eh2 = torch.linspace(0., 1., self.ek1, device=device, dtype=dtype).view(1, 1, self.ek1, 1)
+        else: 
+            self.fuse_matrix_eh1 = torch.empty((1,1,0,1), device=device, dtype=dtype)
+            self.fuse_matrix_eh2 = torch.empty((1,1,0,1), device=device, dtype=dtype)
 
     def grids_inverse(self, outs):
-        preds = torch.zeros(self.original_size).to(outs.device)
-        b, c, h, w = self.original_size
-
-        # count_mt = torch.zeros((b, 1, h, w)).to(outs.device)
+        outs_clone = outs.clone() 
+        preds = torch.zeros(self.original_size, device=outs.device, dtype=outs.dtype)
+        b_orig, c, h, w = self.original_size
         k1, k2 = self.grid_kernel_size
-        k1 = min(h, k1)
-        k2 = min(w, k2)
-        # if not self.h or not self.w:
-        self.get_overlap_matrix(h, w)
+        k1, k2 = min(h, k1), min(w, k2)
+        
+        self.get_overlap_matrix(h, w, outs.device, outs.dtype)
 
-        for cnt, each_idx in enumerate(self.idxes):
-            i = each_idx['i']
-            j = each_idx['j']
-            if i != 0 and i + k1 != h:
-                outs[cnt, :, :self.grid_overlap_size[0], :] *= self.fuse_matrix_h2.to(outs.device)
-            if i + k1 * 2 - self.ek1 < h:
-                # print(outs[cnt, :,  i + k1 - self.grid_overlap_size[0]:i + k1, :].shape,
-                #       self.fuse_matrix_h1.shape)
-                outs[cnt, :, -self.grid_overlap_size[0]:, :] *= self.fuse_matrix_h1.to(outs.device)
-            if i + k1 == h:
-                outs[cnt, :, :self.ek1, :] *= self.fuse_matrix_eh2.to(outs.device)
-            if i + k1 * 2 - self.ek1 == h:
-                outs[cnt, :, -self.ek1:, :] *= self.fuse_matrix_eh1.to(outs.device)
+        device = outs.device
+        indices_i = torch.tensor([d['i'] for d in self.idxes], device=device, dtype=torch.long)
+        indices_j = torch.tensor([d['j'] for d in self.idxes], device=device, dtype=torch.long)
+        
+        preds = grids_inverse_kernel(
+            outs_clone, preds, indices_i, indices_j,
+            self.fuse_matrix_h1, self.fuse_matrix_h2, self.fuse_matrix_eh1, self.fuse_matrix_eh2,
+            self.fuse_matrix_w1, self.fuse_matrix_w2, self.fuse_matrix_ew1, self.fuse_matrix_ew2,
+            k1, k2, h, w,
+            self.grid_overlap_size[0], self.grid_overlap_size[1],
+            self.ek1, self.ek2
+        )
+        return preds
 
-            if j != 0 and j + k2 != w:
-                outs[cnt, :, :, :self.grid_overlap_size[1]] *= self.fuse_matrix_w2.to(outs.device)
-            if j + k2 * 2 - self.ek2 < w:
-                # print(j, j + k2 - self.grid_overlap_size[1], j + k2, self.fuse_matrix_w1.shape)
-                outs[cnt, :, :, -self.grid_overlap_size[1]:] *= self.fuse_matrix_w1.to(outs.device)
-            if j + k2 == w:
-                # print('j + k2 == w: ', self.ek2, outs[cnt, :, :, :self.ek2].shape, self.fuse_matrix_ew1.shape)
-                outs[cnt, :, :, :self.ek2] *= self.fuse_matrix_ew2.to(outs.device)
-            if j + k2 * 2 - self.ek2 == w:
-                # print('j + k2*2 - self.ek2 == w: ')
-                outs[cnt, :, :, -self.ek2:] *= self.fuse_matrix_ew1.to(outs.device)
-            # print(preds[0, :, i:i + k1, j:j + k2].shape)
-            preds[0, :, i:i + k1, j:j + k2] += outs[cnt, :, :, :]
-            # count_mt[0, 0, i:i + k1, j:j + k2] += 1.
+    # def grids(self, x):
+    #     b, c, h, w = x.shape
+    #     self.original_size = (b, c, h, w)
+    #     assert b == 1
+    #     k1, k2 = self.grid_kernel_size
+    #     k1 = min(h, k1)
+    #     k2 = min(w, k2)
+    #     grid_overlap_size = self.grid_overlap_size  # (64, 64)
 
-        del outs
-        torch.cuda.empty_cache()
-        return preds  # / count_mt
+    #     stride = (k1 - grid_overlap_size[0], k2 - grid_overlap_size[1])
+    #     self.stride = stride
+    #     num_row = (h - grid_overlap_size[0] - 1) // stride[0] + 1
+    #     num_col = (w - grid_overlap_size[1] - 1) // stride[1] + 1
+    #     self.nr = num_row
+    #     self.nc = num_col
+
+    #     # import math
+    #     step_j = k2 if num_col == 1 else stride[1]  # math.ceil((w - stride[1]) / (num_col - 1) - 1e-8)
+    #     step_i = k1 if num_row == 1 else stride[0]  # math.ceil((h - stride[0]) / (num_row - 1) - 1e-8)
+
+    #     parts = []
+    #     idxes = []
+    #     i = 0  # 0~h-1
+    #     last_i = False
+    #     self.ek1, self.ek2 = None, None
+    #     while i < h and not last_i:
+    #         j = 0
+    #         if i + k1 >= h:
+    #             # if not self.ek1:
+    #             #     # print(step_i, i, k1, h)
+    #             #     self.ek1 = i + k1 - h # - self.grid_overlap_size[0]
+    #             i = h - k1
+    #             last_i = True
+
+    #         last_j = False
+    #         while j < w and not last_j:
+    #             if j + k2 >= w:
+    #                 # if not self.ek2:
+    #                 #     self.ek2 = j + k2 - w # + self.grid_overlap_size[1]
+    #                 j = w - k2
+    #                 last_j = True
+    #             parts.append(x[:, :, i:i + k1, j:j + k2])
+    #             idxes.append({'i': i, 'j': j})
+    #             j = j + step_j
+    #         i = i + step_i
+
+    #     parts = torch.cat(parts, dim=0)
+    #     self.idxes = idxes
+    #     return parts
+
+    # def get_overlap_matrix(self, h, w):
+    #     # if self.grid:
+    #     # if self.fuse_matrix_h1 is None:
+    #     self.h = h
+    #     self.w = w
+    #     self.ek1 = self.nr * self.stride[0] + self.grid_overlap_size[0] * 2 - h
+    #     self.ek2 = self.nc * self.stride[1] + self.grid_overlap_size[1] * 2 - w
+    #     # self.ek1, self.ek2 = 48, 224
+    #     # print(self.ek1, self.ek2, self.nr)
+    #     # print(self.grid_overlap_size)
+    #     # self.grid_overlap_size = [8, 8]
+    #     # self.grid_overlap_size = [self.grid_overlap_size[0] * 2, self.grid_overlap_size[1] * 2]
+    #     self.fuse_matrix_w1 = torch.linspace(1., 0., self.grid_overlap_size[1]).view(1, 1, self.grid_overlap_size[1])
+    #     self.fuse_matrix_w2 = torch.linspace(0., 1., self.grid_overlap_size[1]).view(1, 1, self.grid_overlap_size[1])
+    #     self.fuse_matrix_h1 = torch.linspace(1., 0., self.grid_overlap_size[0]).view(1, self.grid_overlap_size[0], 1)
+    #     self.fuse_matrix_h2 = torch.linspace(0., 1., self.grid_overlap_size[0]).view(1, self.grid_overlap_size[0], 1)
+    #     self.fuse_matrix_ew1 = torch.linspace(1., 0., self.ek2).view(1, 1, self.ek2)
+    #     self.fuse_matrix_ew2 = torch.linspace(0., 1., self.ek2).view(1, 1, self.ek2)
+    #     self.fuse_matrix_eh1 = torch.linspace(1., 0., self.ek1).view(1, self.ek1, 1)
+    #     self.fuse_matrix_eh2 = torch.linspace(0., 1., self.ek1).view(1, self.ek1, 1)
+
+    # def grids_inverse(self, outs):
+    #     preds = torch.zeros(self.original_size).to(outs.device)
+    #     b, c, h, w = self.original_size
+
+    #     # count_mt = torch.zeros((b, 1, h, w)).to(outs.device)
+    #     k1, k2 = self.grid_kernel_size
+    #     k1 = min(h, k1)
+    #     k2 = min(w, k2)
+    #     # if not self.h or not self.w:
+    #     self.get_overlap_matrix(h, w)
+
+    #     for cnt, each_idx in enumerate(self.idxes):
+    #         i = each_idx['i']
+    #         j = each_idx['j']
+    #         if i != 0 and i + k1 != h:
+    #             outs[cnt, :, :self.grid_overlap_size[0], :] *= self.fuse_matrix_h2.to(outs.device)
+    #         if i + k1 * 2 - self.ek1 < h:
+    #             # print(outs[cnt, :,  i + k1 - self.grid_overlap_size[0]:i + k1, :].shape,
+    #             #       self.fuse_matrix_h1.shape)
+    #             outs[cnt, :, -self.grid_overlap_size[0]:, :] *= self.fuse_matrix_h1.to(outs.device)
+    #         if i + k1 == h:
+    #             outs[cnt, :, :self.ek1, :] *= self.fuse_matrix_eh2.to(outs.device)
+    #         if i + k1 * 2 - self.ek1 == h:
+    #             outs[cnt, :, -self.ek1:, :] *= self.fuse_matrix_eh1.to(outs.device)
+
+    #         if j != 0 and j + k2 != w:
+    #             outs[cnt, :, :, :self.grid_overlap_size[1]] *= self.fuse_matrix_w2.to(outs.device)
+    #         if j + k2 * 2 - self.ek2 < w:
+    #             # print(j, j + k2 - self.grid_overlap_size[1], j + k2, self.fuse_matrix_w1.shape)
+    #             outs[cnt, :, :, -self.grid_overlap_size[1]:] *= self.fuse_matrix_w1.to(outs.device)
+    #         if j + k2 == w:
+    #             # print('j + k2 == w: ', self.ek2, outs[cnt, :, :, :self.ek2].shape, self.fuse_matrix_ew1.shape)
+    #             outs[cnt, :, :, :self.ek2] *= self.fuse_matrix_ew2.to(outs.device)
+    #         if j + k2 * 2 - self.ek2 == w:
+    #             # print('j + k2*2 - self.ek2 == w: ')
+    #             outs[cnt, :, :, -self.ek2:] *= self.fuse_matrix_ew1.to(outs.device)
+    #         # print(preds[0, :, i:i + k1, j:j + k2].shape)
+    #         preds[0, :, i:i + k1, j:j + k2] += outs[cnt, :, :, :]
+    #         # count_mt[0, 0, i:i + k1, j:j + k2] += 1.
+
+    #     del outs
+    #     torch.cuda.empty_cache()
+    #     return preds  # / count_mt
 
 # -----------------------------------------------------------------------
 
@@ -495,3 +596,51 @@ class FeedForward(nn.Module):
         x = self.project_out(x)
         return x
 
+@torch.jit.script
+def grids_inverse_kernel(
+    outs: torch.Tensor,
+    preds: torch.Tensor,
+    indices_i: torch.Tensor,
+    indices_j: torch.Tensor,
+    fuse_matrix_h1: torch.Tensor,
+    fuse_matrix_h2: torch.Tensor,
+    fuse_matrix_eh1: torch.Tensor,
+    fuse_matrix_eh2: torch.Tensor,
+    fuse_matrix_w1: torch.Tensor,
+    fuse_matrix_w2: torch.Tensor,
+    fuse_matrix_ew1: torch.Tensor,
+    fuse_matrix_ew2: torch.Tensor,
+    k1: int, k2: int, h: int, w: int,
+    grid_overlap_size_h: int,
+    grid_overlap_size_w: int,
+    ek1: int, ek2: int
+) -> torch.Tensor:
+    
+    for cnt in range(outs.shape[0]):
+        i = indices_i[cnt].item()
+        j = indices_j[cnt].item()
+        
+        part = outs[cnt:cnt+1] 
+
+        if i != 0 and i + k1 != h:
+            part[:, :, :grid_overlap_size_h, :] *= fuse_matrix_h2
+        if i + k1 * 2 - ek1 < h:
+            part[:, :, -grid_overlap_size_h:, :] *= fuse_matrix_h1
+        if ek1 > 0 and i + k1 == h:
+            part[:, :, :ek1, :] *= fuse_matrix_eh2
+        if ek1 > 0 and i + k1 * 2 - ek1 == h:
+            part[:, :, -ek1:, :] *= fuse_matrix_eh1
+
+        if j != 0 and j + k2 != w:
+            part[:, :, :, :grid_overlap_size_w] *= fuse_matrix_w2
+        if j + k2 * 2 - ek2 < w:
+            part[:, :, :, -grid_overlap_size_w:] *= fuse_matrix_w1
+
+        if ek2 > 0 and j + k2 == w:
+            part[:, :, :, :ek2] *= fuse_matrix_ew2
+        if ek2 > 0 and j + k2 * 2 - ek2 == w:
+            part[:, :, :, -ek2:] *= fuse_matrix_ew1
+            
+        preds[0, :, i:i + k1, j:j + k2] += part.squeeze(0)
+
+    return preds
